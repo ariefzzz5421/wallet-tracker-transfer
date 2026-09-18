@@ -76,6 +76,40 @@ function sameId(a = '', b = '') {
   return String(a).replace(/-/g, '').toLowerCase() === String(b).replace(/-/g, '').toLowerCase();
 }
 
+function getRecordById(map, id) {
+  if (!map || !id) return undefined;
+  for (const [key, record] of Object.entries(map)) {
+    if (sameId(key, id) || sameId(record?.value?.id, id)) return record;
+  }
+  return undefined;
+}
+
+function findCollectionInstance(recordMap, requestedViewId) {
+  const instances = Object.values(recordMap.block || {})
+    .map(record => record?.value)
+    .filter(value =>
+      value
+      && (value.type === 'collection_view' || value.type === 'collection_view_page')
+      && value.collection_id
+    );
+
+  for (const value of instances) {
+    const matchedView = (value.view_ids || []).find(id => sameId(id, requestedViewId));
+    if (matchedView) return { collectionId: value.collection_id, viewId: matchedView };
+  }
+
+  const first = instances[0];
+  if (first) {
+    return {
+      collectionId: first.collection_id,
+      viewId: first.view_ids?.[0] || requestedViewId,
+    };
+  }
+
+  const collectionId = Object.keys(recordMap.collection || {})[0];
+  return collectionId ? { collectionId, viewId: requestedViewId } : null;
+}
+
 function isCollectionRow(record, collectionId) {
   const value = record?.value;
   if (!value || value.type !== 'page' || !value.properties) return false;
@@ -158,32 +192,68 @@ export default async function handler(req, res) {
     const page = await loadPublicPage(pageId);
 
     const recordMap = page?.recordMap || {};
-    const collectionId = Object.keys(recordMap.collection || {})[0]
-      || Object.values(recordMap.block || {}).find(record => record?.value?.collection_id)?.value?.collection_id;
+    const instance = findCollectionInstance(recordMap, viewId);
+    if (!instance?.collectionId || !instance?.viewId) {
+      throw new Error('Public Notion collection metadata was not found.');
+    }
 
-    if (!collectionId) throw new Error('Public Notion collection metadata was not found.');
-
-    const collectionRecord = recordMap.collection?.[collectionId]?.value;
+    const collectionId = instance.collectionId;
+    const collectionViewId = instance.viewId;
+    const collectionRecord = getRecordById(recordMap.collection, collectionId)?.value;
     const schema = collectionRecord?.schema || {};
-    const collectionView = recordMap.collection_view?.[viewId]?.value;
-    const viewType = ['table', 'board'].includes(collectionView?.type) ? collectionView.type : 'table';
-    const query = collectionView?.query2 || collectionView?.query || {
-      aggregations: [{ property: 'title', aggregator: 'count' }],
+    const collectionView = getRecordById(recordMap.collection_view, collectionViewId)?.value;
+    const query = collectionView?.query2 || collectionView?.query || {};
+
+    const modernLoader = {
+      type: 'reducer',
+      reducers: {
+        collection_group_results: {
+          type: 'results',
+          limit: 2000,
+          loadContentCover: true,
+        },
+        'table:uncategorized:title:count': {
+          type: 'aggregation',
+          aggregation: {
+            property: 'title',
+            aggregator: 'count',
+          },
+        },
+      },
+      ...query,
+      searchQuery: '',
+      userTimeZone: 'Asia/Jakarta',
     };
 
-    const collection = await notionPost('queryCollection', {
-      collectionId,
-      collectionViewId: viewId,
-      query,
-      loader: {
-        type: viewType,
-        limit: 2000,
-        searchQuery: '',
-        userTimeZone: 'Asia/Jakarta',
-        userLocale: 'en',
-        loadContentCover: true,
-      },
+    let collection = await notionPost('queryCollection', {
+      collection: { id: collectionId },
+      collectionView: { id: collectionViewId },
+      loader: modernLoader,
     });
+
+    const modernHasData =
+      Object.keys(collection?.recordMap?.block || {}).length > 0
+      || collectBlockIds(collection?.result).size > 0;
+
+    if (!modernHasData) {
+      const viewType = ['table', 'board'].includes(collectionView?.type)
+        ? collectionView.type
+        : 'table';
+
+      collection = await notionPost('queryCollection', {
+        collectionId,
+        collectionViewId,
+        query,
+        loader: {
+          type: viewType,
+          limit: 2000,
+          searchQuery: '',
+          userTimeZone: 'Asia/Jakarta',
+          userLocale: 'en',
+          loadContentCover: true,
+        },
+      });
+    }
 
     const mergedBlocks = {
       ...(recordMap.block || {}),
@@ -193,7 +263,7 @@ export default async function handler(req, res) {
       ...(recordMap.collection || {}),
       ...(collection?.recordMap?.collection || {}),
     };
-    const liveSchema = mergedCollection?.[collectionId]?.value?.schema || schema;
+    const liveSchema = getRecordById(mergedCollection, collectionId)?.value?.schema || schema;
     const blockIds = [...collectBlockIds(collection?.result)];
     const rows = collectRows(mergedBlocks, liveSchema, collectionId, blockIds);
 
@@ -210,7 +280,7 @@ export default async function handler(req, res) {
       rowCount: rows.length,
       rows,
       source: 'public-notion',
-      extraction: rows.length ? 'query+recordMap' : 'empty',
+      extraction: rows.length ? 'query-v2+recordMap' : 'empty',
     });
   } catch (error) {
     return res.status(502).json({
