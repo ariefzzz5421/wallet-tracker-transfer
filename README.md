@@ -29,6 +29,7 @@ Some destination import formats do not expose group/folder creation. To avoid si
 
 - `[GROUP]` name-prefix fallback for destinations without a documented wallet-group import field (enabled by default and optional).
 - Per-group downloads in the currently selected destination format.
+- Direct **Copy ▾** and **Download ▾** menus that export the currently parsed wallet set as either GMGN JSON or BasedBot text without changing the preview destination.
 - A portable `wallettranslate/v1` JSON pack that preserves original names, emojis, and `groups` metadata without flattening.
 - Dedicated Notion `Groups` output column.
 
@@ -36,7 +37,7 @@ GMGN's public bulk-import tutorial documents `address`, `name`, and `emoji`; the
 
 ## Notion starter packs
 
-The UI includes the five supplied Notion database links as starter-pack cards. Open one, copy the table rows, return to Wallet Translate, select Notion as the source, and paste. The browser app does not fetch private Notion content or require a Notion API token.
+The UI includes the five supplied Notion database links as starter-pack cards with short preview titles. The first supplied reference is labelled `Project Mars Land — Top 60 Wallets`; the remaining cards use collection-level labels rather than pretending an unverified page title is known. Open one, copy the table rows, return to Wallet Translate, select Notion as the source, and paste. Then use Copy/Download menus to export directly as GMGN or BasedBot. The browser app does not fetch private Notion content or require a Notion API token.
 
 ## Assets
 
