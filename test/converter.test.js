@@ -29,6 +29,16 @@ test('Notion TSV detects columns and preserves groups',()=>{
   assert.deepEqual(JSON.parse(r.output)[0],{address:a,name:'[CABAL] Alpha Whale',emoji:'🐋'});
 });
 
+
+test('GuarEmperor Notion format Rank Wallet Explorer OpenSea Tag translates automatically',()=>{
+  const input=`Rank\tWallet\tExplorer\tOpenSea\tTag\n1\t${a}\thttps://explorer.example/${a}\thttps://opensea.io/${a}\tProject Mars Land\n2\t${b}\thttps://explorer.example/${b}\t\tProject Mars Land`;
+  const r=convert(input,'notion','gmgn');
+  assert.equal(r.count,2);
+  assert.deepEqual(r.groups,[{name:'Project Mars Land',count:2}]);
+  assert.deepEqual(JSON.parse(r.output)[0],{address:a,name:'[Project Mars Land]'});
+  assert.match(formatWallets(r.wallets,'basedbot'),/\[Project Mars Land\]/);
+});
+
 test('Notion output is tabular and keeps raw group in dedicated column',()=>{
   const out=formatWallets([{address:a,name:'Alpha, Whale',emoji:'👀',groups:['CABAL','SMART']}],'notion');
   assert.equal(out,`Address\tName\tEmoji\tGroups\n${a}\tAlpha, Whale\t👀\tCABAL | SMART`);
