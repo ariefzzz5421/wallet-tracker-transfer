@@ -551,14 +551,6 @@ function renderCreatorHub() {
         const preview = document.createElement('p');
         preview.textContent = pack.preview;
 
-        const tags = document.createElement('div');
-        tags.className = 'pack-tags';
-        for (const tag of pack.tags) {
-          const chip = document.createElement('span');
-          chip.textContent = tag;
-          tags.append(chip);
-        }
-
         const sourceNote = document.createElement('small');
         sourceNote.className = 'pack-title-source';
         sourceNote.textContent = pack.titleStatus === 'verified-page-title'
@@ -569,7 +561,7 @@ function renderCreatorHub() {
         loadState.className = 'pack-load-state';
         loadState.textContent = 'Click card to reveal public data';
 
-        body.append(title, preview, tags, sourceNote, loadState);
+        body.append(title, preview, sourceNote, loadState);
 
         const actions = document.createElement('div');
         actions.className = 'starter-actions pack-actions';
