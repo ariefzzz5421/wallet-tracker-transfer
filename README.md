@@ -1,6 +1,6 @@
 # Wallet Translate
 
-A small, browser-only translator for tracked wallet exports. BasedBot ↔ GMGN, with Fomo marked Coming soon.
+Browser-only translator for tracked wallet lists across BasedBot, GMGN, and Notion, with Fomo marked Coming soon.
 
 ## Run locally
 
@@ -13,20 +13,34 @@ npm test
 npm run build
 ```
 
-Paste an export, choose the source and destination, then copy the automatically converted result. Swap transfers the result into the source panel. No account, backend, wallet connection, storage, or wallet-data network requests.
+Paste an export or copied Notion table, choose the destination, then copy or download the converted result. All conversion stays in the browser; there is no backend, wallet connection, or upload of wallet data.
 
 ## Supported formats
 
-- BasedBot: one full address per line, optionally followed by an emoji and label. Spaced names and trailing group text are kept as labels because plain text cannot reliably distinguish group names.
-- GMGN: JSON array containing `address`, optional `name`, `emoji`, and `groups`. Export alert fields are accepted but cannot transfer to BasedBot. GMGN import output uses the fields shown in the supplied import screenshot. Groups are appended to labels when converting to BasedBot.
-- Complete EVM addresses and base58-encoded 32-byte Solana addresses. The destination tracker must use the matching chain; this tool does not infer a chain from an EVM address.
-- Maximum 2,000 records and 2 MB of text. Invalid records block conversion; duplicates are retained and reported.
+- **BasedBot:** plain text (one full address per line, optional emoji + label) and JSON wallet arrays. `# Group: NAME` / `[Group: NAME]` headers are understood by Wallet Translate for structured paste.
+- **GMGN:** JSON arrays with `address`, optional `name`, and optional `emoji`. Legacy/input-only `groups` fields are accepted for migration, but GMGN output intentionally follows the documented bulk-import fields instead of inventing an unsupported group field.
+- **Notion:** rows copied from a database/table as TSV or CSV. Common columns such as Address/Wallet, Name/Label, Emoji/Icon, and Group/Folder/Category/Tags are detected automatically. JSON wallet arrays and Wallet Translate portable packs are also accepted.
+- **Addresses:** complete EVM addresses and base58-encoded 32-byte Solana addresses.
+- **Limits:** maximum 2,000 records and 2 MB of text. Invalid records block conversion; duplicates are retained and reported.
 
-Formats are based on user-supplied September 9, 2026 screenshots. Automated tests verify format transformation, not authenticated import acceptance inside the third-party platforms. No private keys or trading functions.
+## Group preservation
+
+Some destination import formats do not expose group/folder creation. To avoid silently losing that information, Wallet Translate keeps groups in normalized in-browser data and provides:
+
+- `[GROUP]` name-prefix fallback for destinations without a documented wallet-group import field (enabled by default and optional).
+- Per-group downloads in the currently selected destination format.
+- A portable `wallettranslate/v1` JSON pack that preserves original names, emojis, and `groups` metadata without flattening.
+- Dedicated Notion `Groups` output column.
+
+GMGN's public bulk-import tutorial documents `address`, `name`, and `emoji`; therefore the app does **not** claim that a JSON `groups` property will create GMGN wallet folders automatically.
+
+## Notion starter packs
+
+The UI includes the five supplied Notion database links as starter-pack cards. Open one, copy the table rows, return to Wallet Translate, select Notion as the source, and paste. The browser app does not fetch private Notion content or require a Notion API token.
 
 ## Assets
 
-Platform marks belong to their respective owners. BasedBot mark: https://basedbot.tech/icon.png. GMGN mark: https://basedbot.tech/Images/Terminals/logomarks/card-gmgn.png. Fomo mark: https://fomo.family/favicon.svg. The site is independent and unaffiliated. DM Sans is loaded from Google Fonts; wallet data remains on-device.
+Platform marks belong to their respective owners. The Notion mark is the Simple Icons Notion glyph (CC0). The site is independent and unaffiliated. DM Sans is loaded from Google Fonts; wallet data remains on-device.
 
 ## Deployment
 
