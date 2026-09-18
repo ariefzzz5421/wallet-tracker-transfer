@@ -77,7 +77,33 @@ function sameId(a = '', b = '') {
 }
 
 function unwrapRecord(record) {
-  return record?.value ?? record;
+  let current = record;
+  for (let depth = 0; depth < 5; depth++) {
+    if (!current || typeof current !== 'object') return current;
+
+    const looksLikeRecord =
+      'id' in current
+      || 'type' in current
+      || 'properties' in current
+      || 'schema' in current
+      || 'collection_id' in current
+      || 'view_ids' in current;
+
+    if (looksLikeRecord) return current;
+
+    if (current.value && typeof current.value === 'object') {
+      current = current.value;
+      continue;
+    }
+
+    if (current.data && typeof current.data === 'object') {
+      current = current.data;
+      continue;
+    }
+
+    return current;
+  }
+  return current;
 }
 
 function getRecordById(map, id) {
