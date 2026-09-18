@@ -76,17 +76,22 @@ function sameId(a = '', b = '') {
   return String(a).replace(/-/g, '').toLowerCase() === String(b).replace(/-/g, '').toLowerCase();
 }
 
+function unwrapRecord(record) {
+  return record?.value ?? record;
+}
+
 function getRecordById(map, id) {
   if (!map || !id) return undefined;
   for (const [key, record] of Object.entries(map)) {
-    if (sameId(key, id) || sameId(record?.value?.id, id)) return record;
+    const value = unwrapRecord(record);
+    if (sameId(key, id) || sameId(value?.id, id)) return record;
   }
   return undefined;
 }
 
 function findCollectionInstance(recordMap, requestedViewId) {
   const instances = Object.values(recordMap.block || {})
-    .map(record => record?.value)
+    .map(unwrapRecord)
     .filter(value =>
       value
       && (value.type === 'collection_view' || value.type === 'collection_view_page')
@@ -111,7 +116,7 @@ function findCollectionInstance(recordMap, requestedViewId) {
 }
 
 function isCollectionRow(record, collectionId) {
-  const value = record?.value;
+  const value = unwrapRecord(record);
   if (!value || value.type !== 'page' || !value.properties) return false;
   return value.parent_table === 'collection'
     || sameId(value.parent_id, collectionId)
@@ -119,7 +124,7 @@ function isCollectionRow(record, collectionId) {
 }
 
 function rowFromBlock(block, schema) {
-  const props = block?.value?.properties;
+  const props = unwrapRecord(block)?.properties;
   if (!props || typeof props !== 'object') return null;
   const row = {};
   for (const [propertyId, value] of Object.entries(props)) {
@@ -133,7 +138,7 @@ function rowFromBlock(block, schema) {
 function summarizeRecordMap(recordMap = {}) {
   const blockTypes = {};
   for (const record of Object.values(recordMap.block || {})) {
-    const type = record?.value?.type || 'unknown';
+    const type = unwrapRecord(record)?.type || 'unknown';
     blockTypes[type] = (blockTypes[type] || 0) + 1;
   }
   return {
@@ -225,9 +230,9 @@ export default async function handler(req, res) {
 
     const collectionId = instance.collectionId;
     const collectionViewId = instance.viewId;
-    const collectionRecord = getRecordById(recordMap.collection, collectionId)?.value;
+    const collectionRecord = unwrapRecord(getRecordById(recordMap.collection, collectionId));
     const schema = collectionRecord?.schema || {};
-    const collectionView = getRecordById(recordMap.collection_view, collectionViewId)?.value;
+    const collectionView = unwrapRecord(getRecordById(recordMap.collection_view, collectionViewId));
     const query = collectionView?.query2 || collectionView?.query || {};
 
     const modernLoader = {
@@ -292,14 +297,14 @@ export default async function handler(req, res) {
       ...(recordMap.collection || {}),
       ...(collection?.recordMap?.collection || {}),
     };
-    const liveSchema = getRecordById(mergedCollection, collectionId)?.value?.schema || schema;
+    const liveSchema = unwrapRecord(getRecordById(mergedCollection, collectionId))?.schema || schema;
     const blockIds = [...collectBlockIds(collection?.result)];
     const rows = collectRows(mergedBlocks, liveSchema, collectionId, blockIds);
 
     const pageTitle = plainText(
-      recordMap.block?.[pageId]?.value?.properties?.title
+      unwrapRecord(getRecordById(recordMap.block, pageId))?.properties?.title
       || collectionRecord?.name
-      || mergedCollection?.[collectionId]?.value?.name
+      || unwrapRecord(getRecordById(mergedCollection, collectionId))?.name
     );
 
     const debug = String(req.query?.debug || '') === '1'
