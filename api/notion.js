@@ -84,6 +84,30 @@ function rowFromBlock(block, schema) {
   return Object.keys(row).length ? row : null;
 }
 
+async function loadPublicPage(pageId) {
+  try {
+    return await notionPost('loadPageChunk', {
+      pageId,
+      limit: 100,
+      cursor: { stack: [] },
+      chunkNumber: 0,
+      verticalColumns: false,
+    });
+  } catch (firstError) {
+    try {
+      return await notionPost('loadCachedPageChunkV2', {
+        page: { id: pageId },
+        limit: 100,
+        cursor: { stack: [] },
+        chunkNumber: 0,
+        verticalColumns: false,
+      });
+    } catch {
+      throw firstError;
+    }
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
@@ -98,13 +122,7 @@ export default async function handler(req, res) {
     const pageId = dashed(pack.pageId);
     const viewId = dashed(pack.viewId);
 
-    const page = await notionPost('loadPageChunk', {
-      pageId,
-      limit: 100,
-      cursor: { stack: [] },
-      chunkNumber: 0,
-      verticalColumns: false,
-    });
+    const page = await loadPublicPage(pageId);
 
     const recordMap = page?.recordMap || {};
     const collectionId = Object.keys(recordMap.collection || {})[0]
@@ -126,7 +144,7 @@ export default async function handler(req, res) {
       query,
       loader: {
         type: viewType,
-        limit: 999,
+        limit: 2000,
         searchQuery: '',
         userTimeZone: 'Asia/Jakarta',
         userLocale: 'en',
