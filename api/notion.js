@@ -72,6 +72,18 @@ function collectBlockIds(value, out = new Set()) {
   return out;
 }
 
+function sameId(a = '', b = '') {
+  return String(a).replace(/-/g, '').toLowerCase() === String(b).replace(/-/g, '').toLowerCase();
+}
+
+function isCollectionRow(record, collectionId) {
+  const value = record?.value;
+  if (!value || value.type !== 'page' || !value.properties) return false;
+  return value.parent_table === 'collection'
+    || sameId(value.parent_id, collectionId)
+    || sameId(value.collection_id, collectionId);
+}
+
 function rowFromBlock(block, schema) {
   const props = block?.value?.properties;
   if (!props || typeof props !== 'object') return null;
@@ -82,6 +94,27 @@ function rowFromBlock(block, schema) {
     if (text) row[columnName] = text;
   }
   return Object.keys(row).length ? row : null;
+}
+
+function collectRows(mergedBlocks, schema, collectionId, resultBlockIds) {
+  const orderedIds = [];
+  const seen = new Set();
+
+  const pushId = id => {
+    if (!id || seen.has(id) || !mergedBlocks[id]) return;
+    seen.add(id);
+    orderedIds.push(id);
+  };
+
+  for (const id of resultBlockIds) pushId(id);
+
+  for (const [id, record] of Object.entries(mergedBlocks)) {
+    if (isCollectionRow(record, collectionId)) pushId(id);
+  }
+
+  return orderedIds
+    .map(id => rowFromBlock(mergedBlocks[id], schema))
+    .filter(Boolean);
 }
 
 async function loadPublicPage(pageId) {
@@ -162,10 +195,7 @@ export default async function handler(req, res) {
     };
     const liveSchema = mergedCollection?.[collectionId]?.value?.schema || schema;
     const blockIds = [...collectBlockIds(collection?.result)];
-
-    const rows = blockIds
-      .map(id => rowFromBlock(mergedBlocks[id], liveSchema))
-      .filter(Boolean);
+    const rows = collectRows(mergedBlocks, liveSchema, collectionId, blockIds);
 
     const pageTitle = plainText(
       recordMap.block?.[pageId]?.value?.properties?.title
@@ -180,6 +210,7 @@ export default async function handler(req, res) {
       rowCount: rows.length,
       rows,
       source: 'public-notion',
+      extraction: rows.length ? 'query+recordMap' : 'empty',
     });
   } catch (error) {
     return res.status(502).json({
