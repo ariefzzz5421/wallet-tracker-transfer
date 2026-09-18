@@ -135,12 +135,28 @@ function rowFromBlock(block, schema) {
   return Object.keys(row).length ? row : null;
 }
 
+function recordShape(record) {
+  const value = record?.value;
+  const nestedValue = value?.value;
+  const data = record?.data;
+  return {
+    keys: Object.keys(record || {}),
+    valueKeys: value && typeof value === 'object' ? Object.keys(value) : [],
+    valueValueKeys: nestedValue && typeof nestedValue === 'object' ? Object.keys(nestedValue) : [],
+    dataKeys: data && typeof data === 'object' ? Object.keys(data) : [],
+  };
+}
+
 function summarizeRecordMap(recordMap = {}) {
   const blockTypes = {};
   for (const record of Object.values(recordMap.block || {})) {
     const type = unwrapRecord(record)?.type || 'unknown';
     blockTypes[type] = (blockTypes[type] || 0) + 1;
   }
+  const sampleBlock = Object.values(recordMap.block || {})[0];
+  const sampleCollection = Object.values(recordMap.collection || {})[0];
+  const sampleView = Object.values(recordMap.collection_view || {})[0];
+
   return {
     keys: Object.keys(recordMap),
     blockCount: Object.keys(recordMap.block || {}).length,
@@ -148,6 +164,9 @@ function summarizeRecordMap(recordMap = {}) {
     collectionViewCount: Object.keys(recordMap.collection_view || {}).length,
     collectionQueryCount: Object.keys(recordMap.collection_query || {}).length,
     blockTypes,
+    sampleBlockShape: recordShape(sampleBlock),
+    sampleCollectionShape: recordShape(sampleCollection),
+    sampleViewShape: recordShape(sampleView),
   };
 }
 
