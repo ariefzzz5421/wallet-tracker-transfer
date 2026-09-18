@@ -559,11 +559,17 @@ function renderCreatorHub() {
           tags.append(chip);
         }
 
+        const sourceNote = document.createElement('small');
+        sourceNote.className = 'pack-title-source';
+        sourceNote.textContent = pack.titleStatus === 'verified-page-title'
+          ? 'Verified Notion page title'
+          : 'Source-backed label from @GuarEmperor public posts';
+
         const loadState = document.createElement('small');
         loadState.className = 'pack-load-state';
         loadState.textContent = 'Click card to reveal public data';
 
-        body.append(title, preview, tags, loadState);
+        body.append(title, preview, tags, sourceNote, loadState);
 
         const actions = document.createElement('div');
         actions.className = 'starter-actions pack-actions';
