@@ -161,51 +161,6 @@ function rowFromBlock(block, schema) {
   return Object.keys(row).length ? row : null;
 }
 
-function recordShape(record) {
-  const value = record?.value;
-  const nestedValue = value?.value;
-  const data = record?.data;
-  return {
-    keys: Object.keys(record || {}),
-    valueKeys: value && typeof value === 'object' ? Object.keys(value) : [],
-    valueValueKeys: nestedValue && typeof nestedValue === 'object' ? Object.keys(nestedValue) : [],
-    dataKeys: data && typeof data === 'object' ? Object.keys(data) : [],
-  };
-}
-
-function summarizeRecordMap(recordMap = {}) {
-  const blockTypes = {};
-  for (const record of Object.values(recordMap.block || {})) {
-    const type = unwrapRecord(record)?.type || 'unknown';
-    blockTypes[type] = (blockTypes[type] || 0) + 1;
-  }
-  const sampleBlock = Object.values(recordMap.block || {})[0];
-  const sampleCollection = Object.values(recordMap.collection || {})[0];
-  const sampleView = Object.values(recordMap.collection_view || {})[0];
-
-  return {
-    keys: Object.keys(recordMap),
-    blockCount: Object.keys(recordMap.block || {}).length,
-    collectionCount: Object.keys(recordMap.collection || {}).length,
-    collectionViewCount: Object.keys(recordMap.collection_view || {}).length,
-    collectionQueryCount: Object.keys(recordMap.collection_query || {}).length,
-    blockTypes,
-    sampleBlockShape: recordShape(sampleBlock),
-    sampleCollectionShape: recordShape(sampleCollection),
-    sampleViewShape: recordShape(sampleView),
-  };
-}
-
-function summarizeCollectionResponse(value = {}) {
-  return {
-    keys: Object.keys(value || {}),
-    recordMap: summarizeRecordMap(value?.recordMap || {}),
-    resultKeys: Object.keys(value?.result || {}),
-    reducerKeys: Object.keys(value?.result?.reducerResults || {}),
-    blockIdCount: collectBlockIds(value?.result).size,
-  };
-}
-
 function collectRows(mergedBlocks, schema, collectionId, resultBlockIds) {
   const orderedIds = [];
   const seen = new Set();
@@ -352,21 +307,6 @@ export default async function handler(req, res) {
       || unwrapRecord(getRecordById(mergedCollection, collectionId))?.name
     );
 
-    const debug = String(req.query?.debug || '') === '1'
-      ? {
-          page: summarizeRecordMap(recordMap),
-          instance,
-          collectionViewType: collectionView?.type || null,
-          queryKeys: Object.keys(query || {}),
-          modern: summarizeCollectionResponse(modernCollection),
-          selectedProtocol: protocol,
-          selected: summarizeCollectionResponse(collection),
-          mergedBlockCount: Object.keys(mergedBlocks).length,
-          resultBlockIdCount: blockIds.length,
-          schemaColumns: Object.values(liveSchema || {}).map(column => column?.name).filter(Boolean),
-        }
-      : undefined;
-
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=1800');
     return res.status(200).json({
       packId,
@@ -375,7 +315,6 @@ export default async function handler(req, res) {
       rows,
       source: 'public-notion',
       extraction: rows.length ? 'query-v2+recordMap' : 'empty',
-      ...(debug ? { debug } : {}),
     });
   } catch (error) {
     return res.status(502).json({
