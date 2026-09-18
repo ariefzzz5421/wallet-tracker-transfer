@@ -50,8 +50,6 @@
 .creator-pack-card{cursor:pointer;position:relative}
 .creator-pack-card:hover{border-color:#536448;background:#192018}
 .creator-pack-card.loading{opacity:.72}
-.pack-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
-.pack-tags span{font-size:8px;color:#9fac94;background:#20271d;border:1px solid #36412f;border-radius:999px;padding:3px 6px}
 .pack-load-state{display:block;margin-top:7px;font-size:8px;color:#6f7b68}
 .pack-actions{flex-wrap:wrap;justify-content:flex-end}
 .pack-action-dropdown>button{min-width:auto}
